@@ -16,11 +16,14 @@ export interface ProConList {
 
 export type ItemType = 'pro' | 'con';
 
+export type AnalysisLanguage = 'en-US' | 'pt-BR';
+
 export interface AIAnalysis {
   recommendation: 'proceed' | 'avoid' | 'consider_carefully';
   confidence: number; // 0-100
   reasoning: string;
   keyFactors: string[];
   suggestedConsiderations: string[];
+  language: AnalysisLanguage;
   createdAt: Date;
 }

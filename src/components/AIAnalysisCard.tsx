@@ -1,19 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { Brain, Lightbulb, AlertTriangle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Brain, Lightbulb, AlertTriangle, CheckCircle, XCircle, Loader2, Languages } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useProConStore } from '@/store/procon';
-import { AIAnalysis } from '@/types';
+import { AIAnalysis, AnalysisLanguage } from '@/types';
 
 interface AIAnalysisCardProps {
   className?: string;
 }
 
 export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
-  const { currentList, currentAnalysis, isAnalyzing, analyzeCurrentList, clearAnalysis } = useProConStore();
+  const { 
+    currentList, 
+    currentAnalysis, 
+    isAnalyzing, 
+    analysisLanguage, 
+    analyzeCurrentList, 
+    clearAnalysis, 
+    setAnalysisLanguage 
+  } = useProConStore();
   const [error, setError] = useState<string | null>(null);
 
   const handleAnalyze = async () => {
@@ -25,6 +33,65 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
       setError(errorMessage);
     }
   };
+
+  const handleLanguageChange = (language: AnalysisLanguage) => {
+    setAnalysisLanguage(language);
+    // Clear current analysis when language changes
+    if (currentAnalysis) {
+      clearAnalysis();
+    }
+  };
+
+  const getTranslations = (lang: AnalysisLanguage) => {
+    if (lang === 'pt-BR') {
+      return {
+        title: 'Análise de Decisão IA',
+        description: 'Obtenha insights com IA para ajudá-lo a tomar a melhor decisão baseada nos seus prós e contras.',
+        addProsConsPrompt: 'Adicione alguns prós e contras para obter análise da IA',
+        readyToAnalyze: 'Pronto para analisar sua decisão',
+        analyzeButton: 'Analisar Decisão',
+        analyzing: 'Analisando seus prós e contras...',
+        analysisError: 'Erro na Análise',
+        tryAgain: 'Tentar Novamente',
+        reAnalyze: 'Re-analisar',
+        clearAnalysis: 'Limpar Análise',
+        analysisReasoning: 'Raciocínio da Análise',
+        keyFactors: 'Fatores Principais',
+        additionalConsiderations: 'Considerações Adicionais',
+        analysisGenerated: 'Análise gerada em',
+        recommendations: {
+          proceed: 'Recomendado Prosseguir',
+          avoid: 'Recomendado Evitar', 
+          consider_carefully: 'Considerar Cuidadosamente'
+        },
+        confidence: 'confiança'
+      };
+    }
+    return {
+      title: 'AI Decision Analysis',
+      description: 'Get AI-powered insights to help you make the best decision based on your pros and cons.',
+      addProsConsPrompt: 'Add some pros and cons to get AI analysis',
+      readyToAnalyze: 'Ready to analyze your decision',
+      analyzeButton: 'Analyze Decision',
+      analyzing: 'Analyzing your pros and cons...',
+      analysisError: 'Analysis Error',
+      tryAgain: 'Try Again',
+      reAnalyze: 'Re-analyze',
+      clearAnalysis: 'Clear Analysis',
+      analysisReasoning: 'Analysis Reasoning',
+      keyFactors: 'Key Factors',
+      additionalConsiderations: 'Additional Considerations',
+      analysisGenerated: 'Analysis generated on',
+      recommendations: {
+        proceed: 'Recommended to Proceed',
+        avoid: 'Recommended to Avoid',
+        consider_carefully: 'Consider Carefully'
+      },
+      confidence: 'confidence'
+    };
+  };
+
+  const t = getTranslations(analysisLanguage);
 
   const getRecommendationIcon = (recommendation: AIAnalysis['recommendation']) => {
     switch (recommendation) {
@@ -49,14 +116,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
   };
 
   const getRecommendationText = (recommendation: AIAnalysis['recommendation']) => {
-    switch (recommendation) {
-      case 'proceed':
-        return 'Recommended to Proceed';
-      case 'avoid':
-        return 'Recommended to Avoid';
-      case 'consider_carefully':
-        return 'Consider Carefully';
-    }
+    return t.recommendations[recommendation];
   };
 
   const canAnalyze = currentList && (currentList.pros.length > 0 || currentList.cons.length > 0);
@@ -64,13 +124,28 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
   return (
     <Card className={className}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-blue-600" />
-          AI Decision Analysis
-        </CardTitle>
-        <CardDescription>
-          Get AI-powered insights to help you make the best decision based on your pros and cons.
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-blue-600" />
+              {t.title}
+            </CardTitle>
+            <CardDescription>
+              {t.description}
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Languages className="h-4 w-4 text-gray-500" />
+            <select
+              value={analysisLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value as AnalysisLanguage)}
+              className="text-sm border border-gray-300 rounded px-2 py-1 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="en-US">English (US)</option>
+              <option value="pt-BR">Português (Brasil)</option>
+            </select>
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {!currentAnalysis && !isAnalyzing && (
@@ -78,8 +153,8 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
             <Brain className="h-12 w-12 text-gray-400 mx-auto mb-3" />
             <p className="text-gray-600 mb-4">
               {!canAnalyze 
-                ? 'Add some pros and cons to get AI analysis'
-                : 'Ready to analyze your decision'
+                ? t.addProsConsPrompt
+                : t.readyToAnalyze
               }
             </p>
             <Button
@@ -88,7 +163,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
               className="w-full"
             >
               <Brain className="h-4 w-4 mr-2" />
-              Analyze Decision
+              {t.analyzeButton}
             </Button>
           </div>
         )}
@@ -96,7 +171,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
         {isAnalyzing && (
           <div className="text-center py-8">
             <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-600" />
-            <p className="text-gray-600">Analyzing your pros and cons...</p>
+            <p className="text-gray-600">{t.analyzing}</p>
           </div>
         )}
 
@@ -104,7 +179,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center gap-2">
               <XCircle className="h-5 w-5 text-red-600" />
-              <span className="text-red-800 font-medium">Analysis Error</span>
+              <span className="text-red-800 font-medium">{t.analysisError}</span>
             </div>
             <p className="text-red-700 mt-1">{error}</p>
             <Button
@@ -114,7 +189,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
               disabled={!canAnalyze}
               className="mt-3"
             >
-              Try Again
+              {t.tryAgain}
             </Button>
           </div>
         )}
@@ -130,13 +205,13 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
                 </span>
               </div>
               <Badge variant="secondary">
-                {currentAnalysis.confidence}% confidence
+                {currentAnalysis.confidence}% {t.confidence}
               </Badge>
             </div>
 
             {/* Reasoning */}
             <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="font-medium text-gray-900 mb-2">Analysis Reasoning</h4>
+              <h4 className="font-medium text-gray-900 mb-2">{t.analysisReasoning}</h4>
               <p className="text-gray-700 leading-relaxed">{currentAnalysis.reasoning}</p>
             </div>
 
@@ -145,7 +220,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
               <div>
                 <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4 text-yellow-600" />
-                  Key Factors
+                  {t.keyFactors}
                 </h4>
                 <ul className="space-y-2">
                   {currentAnalysis.keyFactors.map((factor, index) => (
@@ -163,7 +238,7 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
               <div>
                 <h4 className="font-medium text-gray-900 mb-2 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
-                  Additional Considerations
+                  {t.additionalConsiderations}
                 </h4>
                 <ul className="space-y-2">
                   {currentAnalysis.suggestedConsiderations.map((consideration, index) => (
@@ -184,20 +259,20 @@ export function AIAnalysisCard({ className }: AIAnalysisCardProps) {
                 onClick={handleAnalyze}
                 disabled={isAnalyzing}
               >
-                Re-analyze
+                {t.reAnalyze}
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={clearAnalysis}
               >
-                Clear Analysis
+                {t.clearAnalysis}
               </Button>
             </div>
 
             {/* Timestamp */}
             <p className="text-xs text-gray-500 pt-2">
-              Analysis generated on {currentAnalysis.createdAt.toLocaleString()}
+              {t.analysisGenerated} {currentAnalysis.createdAt.toLocaleString()}
             </p>
           </div>
         )}

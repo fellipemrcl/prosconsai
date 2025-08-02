@@ -1,28 +1,56 @@
 import OpenAI from 'openai';
-import { ProConList, AIAnalysis } from '@/types';
+import { ProConList, AIAnalysis, AnalysisLanguage } from '@/types';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-export async function generateAIAnalysis(proConList: ProConList): Promise<AIAnalysis> {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OpenAI API key is not configured');
-  }
+const getLanguageInstructions = (language: AnalysisLanguage) => {
+  switch (language) {
+    case 'pt-BR':
+      return {
+        systemMessage: 'Você é um analista de decisões especialista. Forneça recomendações claras, equilibradas e práticas baseadas na análise de prós e contras. Responda apenas com JSON válido em português brasileiro.',
+        promptTemplate: `Analise a seguinte lista de prós e contras para tomar uma decisão sobre: "${'{title}'}"
 
-  const prosText = proConList.pros.map(item => item.text).join('\n- ');
-  const consText = proConList.cons.map(item => item.text).join('\n- ');
+${'{description}'}
 
-  const prompt = `Analyze the following pros and cons list for making a decision about: "${proConList.title}"
+PRÓS:
+- {prosText}
 
-${proConList.description ? `Description: ${proConList.description}` : ''}
+CONTRAS:
+- {consText}
+
+Com base nesta análise, forneça uma recomendação estruturada no seguinte formato JSON:
+{
+  "recommendation": "proceed" | "avoid" | "consider_carefully",
+  "confidence": número (0-100),
+  "reasoning": "Explicação detalhada da recomendação",
+  "keyFactors": ["Fatores mais importantes que influenciaram a decisão"],
+  "suggestedConsiderations": ["Fatores adicionais a considerar antes de decidir"]
+}
+
+Foque em:
+1. Pesar a significância e impacto de cada pró e contra
+2. Identificar riscos e oportunidades potenciais
+3. Considerar implicações de curto e longo prazo
+4. Fornecer insights práticos
+
+Retorne apenas o objeto JSON sem texto adicional.`
+      };
+    case 'en-US':
+    default:
+      return {
+        systemMessage: 'You are an expert decision analyst. Provide clear, balanced, and actionable recommendations based on pros and cons analysis. Return only valid JSON in American English.',
+        promptTemplate: `Analyze the following pros and cons list for making a decision about: "${'{title}'}"
+
+${'{description}'}
 
 PROS:
-- ${prosText}
+- {prosText}
 
 CONS:
-- ${consText}
+- {consText}
 
 Based on this analysis, provide a structured recommendation in the following JSON format:
 {
@@ -39,7 +67,25 @@ Focus on:
 3. Considering both short-term and long-term implications
 4. Providing actionable insights
 
-Return only the JSON object without any additional text.`;
+Return only the JSON object without any additional text.`
+      };
+  }
+};
+
+export async function generateAIAnalysis(proConList: ProConList, language: AnalysisLanguage = 'en-US'): Promise<AIAnalysis> {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OpenAI API key is not configured');
+  }
+
+  const prosText = proConList.pros.map(item => item.text).join('\n- ');
+  const consText = proConList.cons.map(item => item.text).join('\n- ');
+  const languageInstructions = getLanguageInstructions(language);
+
+  const prompt = languageInstructions.promptTemplate
+    .replace('{title}', proConList.title)
+    .replace('{description}', proConList.description ? `Description: ${proConList.description}` : '')
+    .replace('{prosText}', prosText)
+    .replace('{consText}', consText);
 
   try {
     const completion = await openai.chat.completions.create({
@@ -47,7 +93,7 @@ Return only the JSON object without any additional text.`;
       messages: [
         {
           role: 'system',
-          content: 'You are an expert decision analyst. Provide clear, balanced, and actionable recommendations based on pros and cons analysis. Return only valid JSON.'
+          content: languageInstructions.systemMessage
         },
         {
           role: 'user',
@@ -67,6 +113,7 @@ Return only the JSON object without any additional text.`;
     
     return {
       ...analysisData,
+      language,
       createdAt: new Date(),
     };
   } catch (error) {

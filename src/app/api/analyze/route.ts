@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateAIAnalysis } from '@/lib/openai';
-import { ProConList } from '@/types';
+import { ProConList, AnalysisLanguage } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const proConList: ProConList = await request.json();
+    const { proConList, language }: { proConList: ProConList; language?: AnalysisLanguage } = await request.json();
     
     // Validate the request data
     if (!proConList || !proConList.title) {
@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const analysis = await generateAIAnalysis(proConList);
+    const analysis = await generateAIAnalysis(proConList, language || 'en-US');
     
     return NextResponse.json(analysis);
   } catch (error) {

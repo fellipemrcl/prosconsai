@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ProConList, ProConItem, ItemType, AIAnalysis } from '@/types';
+import { ProConList, ProConItem, ItemType, AIAnalysis, AnalysisLanguage } from '@/types';
 import { deserializeState, generateId } from '@/utils/storage';
 
 /**
@@ -18,6 +18,7 @@ interface ProConStore {
   currentList: ProConList | null;
   currentAnalysis: AIAnalysis | null;
   isAnalyzing: boolean;
+  analysisLanguage: AnalysisLanguage;
   
   // List management actions
   createList: (title: string, description?: string) => string;
@@ -32,8 +33,9 @@ interface ProConStore {
   deleteItem: (listId: string, type: ItemType, itemId: string) => void;
   
   // AI Analysis actions
-  analyzeCurrentList: () => Promise<void>;
+  analyzeCurrentList: (language?: AnalysisLanguage) => Promise<void>;
   clearAnalysis: () => void;
+  setAnalysisLanguage: (language: AnalysisLanguage) => void;
   
   // Navigation actions
   clearCurrentList: () => void;
@@ -46,6 +48,7 @@ export const useProConStore = create<ProConStore>()(
       currentList: null,
       currentAnalysis: null,
       isAnalyzing: false,
+      analysisLanguage: 'en-US' as AnalysisLanguage,
       
       createList: (title: string, description?: string) => {
         const newList: ProConList = {
@@ -202,8 +205,8 @@ export const useProConStore = create<ProConStore>()(
         });
       },
       
-      analyzeCurrentList: async (): Promise<void> => {
-        const { currentList } = get();
+      analyzeCurrentList: async (language?: AnalysisLanguage): Promise<void> => {
+        const { currentList, analysisLanguage } = get();
         if (!currentList) {
           throw new Error('No current list to analyze');
         }
@@ -212,6 +215,7 @@ export const useProConStore = create<ProConStore>()(
           throw new Error('Cannot analyze empty pros and cons list');
         }
 
+        const selectedLanguage = language || analysisLanguage;
         set({ isAnalyzing: true, currentAnalysis: null });
 
         try {
@@ -220,7 +224,7 @@ export const useProConStore = create<ProConStore>()(
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify(currentList),
+            body: JSON.stringify({ proConList: currentList, language: selectedLanguage }),
           });
 
           if (!response.ok) {
@@ -238,6 +242,10 @@ export const useProConStore = create<ProConStore>()(
 
       clearAnalysis: (): void => {
         set({ currentAnalysis: null });
+      },
+
+      setAnalysisLanguage: (language: AnalysisLanguage): void => {
+        set({ analysisLanguage: language });
       },
       
       clearCurrentList: (): void => {
