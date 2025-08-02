@@ -5,6 +5,7 @@ import { ProConList } from '@/types';
 import { useProConStore } from '@/store/procon';
 import { ProConItemComponent } from './ProConItemComponent';
 import { AddItemForm } from './AddItemForm';
+import { AIAnalysisCard } from './AIAnalysisCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -205,6 +206,11 @@ export const ProConListView: React.FC<ProConListViewProps> = ({ list }) => {
             <AddItemForm listId={list.id} type="con" />
           </div>
         </div>
+      </div>
+
+      {/* AI Analysis Section */}
+      <div className="mt-8">
+        <AIAnalysisCard />
       </div>
 
       {/* Meta Information */}

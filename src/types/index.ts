@@ -15,3 +15,12 @@ export interface ProConList {
 }
 
 export type ItemType = 'pro' | 'con';
+
+export interface AIAnalysis {
+  recommendation: 'proceed' | 'avoid' | 'consider_carefully';
+  confidence: number; // 0-100
+  reasoning: string;
+  keyFactors: string[];
+  suggestedConsiderations: string[];
+  createdAt: Date;
+}

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { ProConList, ProConItem, ItemType } from '@/types';
+import { ProConList, ProConItem, ItemType, AIAnalysis } from '@/types';
 import { deserializeState, generateId } from '@/utils/storage';
 
 /**
@@ -8,6 +8,7 @@ import { deserializeState, generateId } from '@/utils/storage';
  * Features:
  * - Create, update, and delete lists
  * - Add, edit, and remove pros/cons items
+ * - AI analysis of pros and cons
  * - Persistent storage with automatic date serialization
  * - Type-safe operations with full TypeScript support
  */
@@ -15,6 +16,8 @@ interface ProConStore {
   // State
   lists: ProConList[];
   currentList: ProConList | null;
+  currentAnalysis: AIAnalysis | null;
+  isAnalyzing: boolean;
   
   // List management actions
   createList: (title: string, description?: string) => string;
@@ -28,6 +31,10 @@ interface ProConStore {
   updateItem: (listId: string, type: ItemType, itemId: string, text: string) => void;
   deleteItem: (listId: string, type: ItemType, itemId: string) => void;
   
+  // AI Analysis actions
+  analyzeCurrentList: () => Promise<void>;
+  clearAnalysis: () => void;
+  
   // Navigation actions
   clearCurrentList: () => void;
 }
@@ -37,6 +44,8 @@ export const useProConStore = create<ProConStore>()(
     (set, get) => ({
       lists: [],
       currentList: null,
+      currentAnalysis: null,
+      isAnalyzing: false,
       
       createList: (title: string, description?: string) => {
         const newList: ProConList = {
@@ -193,8 +202,46 @@ export const useProConStore = create<ProConStore>()(
         });
       },
       
+      analyzeCurrentList: async (): Promise<void> => {
+        const { currentList } = get();
+        if (!currentList) {
+          throw new Error('No current list to analyze');
+        }
+
+        if (currentList.pros.length === 0 && currentList.cons.length === 0) {
+          throw new Error('Cannot analyze empty pros and cons list');
+        }
+
+        set({ isAnalyzing: true, currentAnalysis: null });
+
+        try {
+          const response = await fetch('/api/analyze', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(currentList),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to analyze list');
+          }
+
+          const analysis: AIAnalysis = await response.json();
+          set({ currentAnalysis: analysis, isAnalyzing: false });
+        } catch (error) {
+          set({ isAnalyzing: false });
+          throw error;
+        }
+      },
+
+      clearAnalysis: (): void => {
+        set({ currentAnalysis: null });
+      },
+      
       clearCurrentList: (): void => {
-        set({ currentList: null });
+        set({ currentList: null, currentAnalysis: null });
       },
     }),
     {
