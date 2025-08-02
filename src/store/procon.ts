@@ -1,26 +1,36 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ProConList, ProConItem, ItemType } from '@/types';
+import { deserializeState, generateId } from '@/utils/storage';
 
+/**
+ * Zustand store for managing Pros and Cons lists
+ * Features:
+ * - Create, update, and delete lists
+ * - Add, edit, and remove pros/cons items
+ * - Persistent storage with automatic date serialization
+ * - Type-safe operations with full TypeScript support
+ */
 interface ProConStore {
+  // State
   lists: ProConList[];
   currentList: ProConList | null;
   
-  // Actions
+  // List management actions
   createList: (title: string, description?: string) => string;
   deleteList: (listId: string) => void;
   setCurrentList: (listId: string) => void;
   updateListTitle: (listId: string, title: string) => void;
   updateListDescription: (listId: string, description: string) => void;
   
+  // Item management actions
   addItem: (listId: string, type: ItemType, text: string) => void;
   updateItem: (listId: string, type: ItemType, itemId: string, text: string) => void;
   deleteItem: (listId: string, type: ItemType, itemId: string) => void;
   
+  // Navigation actions
   clearCurrentList: () => void;
 }
-
-const generateId = () => Math.random().toString(36).substring(2) + Date.now().toString(36);
 
 export const useProConStore = create<ProConStore>()(
   persist(
@@ -54,134 +64,177 @@ export const useProConStore = create<ProConStore>()(
         }));
       },
       
-      setCurrentList: (listId: string) => {
-        const list = get().lists.find((l) => l.id === listId);
+      setCurrentList: (listId: string): void => {
+        const { lists } = get();
+        const list = lists.find((l) => l.id === listId);
         if (list) {
           set({ currentList: list });
         }
       },
       
-      updateListTitle: (listId: string, title: string) => {
+      updateListTitle: (listId: string, title: string): void => {
+        const now = new Date();
         set((state) => ({
           lists: state.lists.map((list) =>
             list.id === listId
-              ? { ...list, title, updatedAt: new Date() }
+              ? { ...list, title, updatedAt: now }
               : list
           ),
           currentList:
             state.currentList?.id === listId
-              ? { ...state.currentList, title, updatedAt: new Date() }
+              ? { ...state.currentList, title, updatedAt: now }
               : state.currentList,
         }));
       },
       
-      updateListDescription: (listId: string, description: string) => {
+      updateListDescription: (listId: string, description: string): void => {
+        const now = new Date();
         set((state) => ({
           lists: state.lists.map((list) =>
             list.id === listId
-              ? { ...list, description, updatedAt: new Date() }
+              ? { ...list, description, updatedAt: now }
               : list
           ),
           currentList:
             state.currentList?.id === listId
-              ? { ...state.currentList, description, updatedAt: new Date() }
+              ? { ...state.currentList, description, updatedAt: now }
               : state.currentList,
         }));
       },
       
-      addItem: (listId: string, type: ItemType, text: string) => {
+      addItem: (listId: string, type: ItemType, text: string): void => {
         const newItem: ProConItem = {
           id: generateId(),
           text,
           createdAt: new Date(),
         };
         
+        const now = new Date();
+        const itemKey = type === 'pro' ? 'pros' : 'cons';
+        
         set((state) => {
           const updatedLists = state.lists.map((list) => {
             if (list.id === listId) {
-              const updatedList = {
+              return {
                 ...list,
-                [type === 'pro' ? 'pros' : 'cons']: [
-                  ...list[type === 'pro' ? 'pros' : 'cons'],
-                  newItem,
-                ],
-                updatedAt: new Date(),
+                [itemKey]: [...list[itemKey], newItem],
+                updatedAt: now,
               };
-              return updatedList;
             }
             return list;
           });
           
+          const updatedCurrentList = state.currentList?.id === listId
+            ? updatedLists.find((l) => l.id === listId) || null
+            : state.currentList;
+          
           return {
             lists: updatedLists,
-            currentList:
-              state.currentList?.id === listId
-                ? updatedLists.find((l) => l.id === listId) || null
-                : state.currentList,
+            currentList: updatedCurrentList,
           };
         });
       },
       
-      updateItem: (listId: string, type: ItemType, itemId: string, text: string) => {
+      updateItem: (listId: string, type: ItemType, itemId: string, text: string): void => {
+        const now = new Date();
+        const itemKey = type === 'pro' ? 'pros' : 'cons';
+        
         set((state) => {
           const updatedLists = state.lists.map((list) => {
             if (list.id === listId) {
-              const items = type === 'pro' ? 'pros' : 'cons';
-              const updatedItems = list[items].map((item) =>
+              const updatedItems = list[itemKey].map((item) =>
                 item.id === itemId ? { ...item, text } : item
               );
-              const updatedList = {
+              return {
                 ...list,
-                [items]: updatedItems,
-                updatedAt: new Date(),
+                [itemKey]: updatedItems,
+                updatedAt: now,
               };
-              return updatedList;
             }
             return list;
           });
           
+          const updatedCurrentList = state.currentList?.id === listId
+            ? updatedLists.find((l) => l.id === listId) || null
+            : state.currentList;
+          
           return {
             lists: updatedLists,
-            currentList:
-              state.currentList?.id === listId
-                ? updatedLists.find((l) => l.id === listId) || null
-                : state.currentList,
+            currentList: updatedCurrentList,
           };
         });
       },
       
-      deleteItem: (listId: string, type: ItemType, itemId: string) => {
+      deleteItem: (listId: string, type: ItemType, itemId: string): void => {
+        const now = new Date();
+        const itemKey = type === 'pro' ? 'pros' : 'cons';
+        
         set((state) => {
           const updatedLists = state.lists.map((list) => {
             if (list.id === listId) {
-              const items = type === 'pro' ? 'pros' : 'cons';
-              const updatedItems = list[items].filter((item) => item.id !== itemId);
-              const updatedList = {
+              const updatedItems = list[itemKey].filter((item) => item.id !== itemId);
+              return {
                 ...list,
-                [items]: updatedItems,
-                updatedAt: new Date(),
+                [itemKey]: updatedItems,
+                updatedAt: now,
               };
-              return updatedList;
             }
             return list;
           });
           
+          const updatedCurrentList = state.currentList?.id === listId
+            ? updatedLists.find((l) => l.id === listId) || null
+            : state.currentList;
+          
           return {
             lists: updatedLists,
-            currentList:
-              state.currentList?.id === listId
-                ? updatedLists.find((l) => l.id === listId) || null
-                : state.currentList,
+            currentList: updatedCurrentList,
           };
         });
       },
       
-      clearCurrentList: () => {
+      clearCurrentList: (): void => {
         set({ currentList: null });
       },
     }),
     {
       name: 'procon-storage',
+      storage: {
+        getItem: (name: string) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          
+          try {
+            const parsed = JSON.parse(str);
+            // Convert date strings back to Date objects using our utility functions
+            if (parsed.state?.lists || parsed.state?.currentList) {
+              const deserializedState = deserializeState(parsed.state);
+              return {
+                ...parsed,
+                state: deserializedState,
+              };
+            }
+            return parsed;
+          } catch (error) {
+            console.warn('Failed to parse stored data:', error);
+            return null;
+          }
+        },
+        setItem: (name: string, value: unknown): void => {
+          try {
+            localStorage.setItem(name, JSON.stringify(value));
+          } catch (error) {
+            console.error('Failed to save to localStorage:', error);
+          }
+        },
+        removeItem: (name: string): void => {
+          try {
+            localStorage.removeItem(name);
+          } catch (error) {
+            console.error('Failed to remove from localStorage:', error);
+          }
+        },
+      },
     }
   )
 );

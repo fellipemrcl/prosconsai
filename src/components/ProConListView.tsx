@@ -186,8 +186,8 @@ export const ProConListView: React.FC<ProConListViewProps> = ({ list }) => {
       {/* Meta Information */}
       <div className="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-500 text-center">
         <p>
-          Created: {list.createdAt.toLocaleDateString()} | 
-          Last updated: {list.updatedAt.toLocaleDateString()}
+          Created: {new Date(list.createdAt).toLocaleDateString()} | 
+          Last updated: {new Date(list.updatedAt).toLocaleDateString()}
         </p>
       </div>
     </div>
